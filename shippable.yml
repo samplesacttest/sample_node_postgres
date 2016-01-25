@@ -1,25 +1,65 @@
 language: node_js
 
+# Version number
 node_js:
-  - 0.10.25
+  - 0.12
+  - 0.11
 
-# For xunit-file module to put results in shippable folder
+services:
+  - postgres
+  
 env:
-  - XUNIT_FILE=shippable/testresults/result.xml
+  global:
+    - FO1=FUBU
+    - FO2=BUBU
+    - BOO=GUBU
 
-# Postgres binds to 127.0.0.1 by default and is started on boot. Default username is "postgres" with no password
-# Create a DB as part of before script to use it
-# Make folders for the reports, and create the SQL db
-before_script:
-  - mkdir -p shippable/testresults
-  - mkdir -p shippable/codecoverage
-  - psql -c 'CREATE DATABASE app_test;' -U postgres
+ 
+build:
+  # pre_ci:
+   # - docker build --rm -t=shippabledocker/ .
 
-script:
-  - npm test
+  pre_ci_boot:
+    image_name: drydock/u12nodpls
+    image_tag:  prod
+    pull: true
+    env: FOO=BAR
+    options: '--privileged=true '
 
-# Generate coverage report with istanbul
-after_script:
-#  - psql -c 'create database if not exists test;' -U postgres
-  - ./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --ui=bdd --reporter=xunit-file
-  - ./node_modules/.bin/istanbul report cobertura --dir shippable/codecoverage/
+  ci:
+    - ps -eax
+    - ls -al
+    - echo $FO1 and $FO2 and $FOO
+   
+    # post_ci:
+  #  - docker build --rm -t=shippabledocker/vidya_sample_node3 . 
+   # - docker push shippabledocker/vidya_sample_node3
+  smoke_test:
+    - sudo ls /
+
+deploy:
+  pre_build:
+    - ls
+    - ls -al
+
+integrations:
+  notification:
+    - integrationName: "slack-pvt"
+      type: slack
+      recipients:
+        - pvt-channel
+      branches:
+        only:
+          - master
+      on_start: always
+      on_success: always
+      on_failure: always
+      on_pull_request: always
+    
+
+  hub:
+    - integrationName: "shippable-docker"
+      type: docker
+      branches:
+        only:
+          - master
